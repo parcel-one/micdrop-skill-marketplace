@@ -1,0 +1,23 @@
+{
+  "name": "micdrop-skill-marketplace",
+  "owner": {
+    "name": "PARCEL.ONE Technology",
+    "email": "alwag@parcel.one"
+  },
+  "metadata": {
+    "description": "Claude-Code-Plugins von PARCEL.ONE Technology: Daily MicDrop (Feierabend-Buchung von Jira-Worklogs aus einer Zeitspanne)."
+  },
+  "plugins": [
+    {
+      "name": "daily-micdrop",
+      "source": "./plugins/daily-micdrop",
+      "description": "Feierabend-Buchung: Zeitspanne eingeben, Spuren aus Jira, Claude-Code-Sitzungen, Kalender, Teams und Mail sammeln, Minuten je Ticket schätzen, Formular mit Eingabefeldern, Worklogs in Jira buchen.",
+      "version": "2.0.0",
+      "author": {
+        "name": "Albert Wagner"
+      },
+      "category": "productivity",
+      "keywords": ["jira", "worklog", "zeiterfassung", "micdrop", "parcel.one"]
+    }
+  ]
+}

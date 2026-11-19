@@ -1,0 +1,10 @@
+{
+  "name": "daily-micdrop",
+  "version": "2.0.0",
+  "description": "Feierabend-Buchung für PARCEL.ONE Technology: Zeitspanne eingeben, Arbeitsspuren aus Jira, Claude-Code-Sitzungen, Outlook, Teams und Mail sammeln, Minuten je Ticket schätzen, Rückfragen im Formular, Worklogs in Jira buchen.",
+  "author": {
+    "name": "Albert Wagner",
+    "email": "alwag@parcel.one"
+  },
+  "keywords": ["jira", "worklog", "zeiterfassung", "micdrop"]
+}
