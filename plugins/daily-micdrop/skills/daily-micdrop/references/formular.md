@@ -1,138 +1,196 @@
-# Formular (Rückfrage in einem Schritt)
+# Formular (Rückfrage in einem Schritt, mit laufender Tagessumme)
 
-Werkzeug: `show_widget` (Modul „elicitation“ des Visualisierungs-Servers). Vorher einmal
-`read_me` mit `modules: ["elicitation"]` laden, falls in dieser Sitzung noch nicht geschehen.
-Das Formular enthält **nur** das Formular; Erklärungen stehen im Chattext davor (zwei Sätze:
-Zeitraum, Quellen, was fehlt).
+Werkzeug: `show_widget` (HTML-Widget). Vorher einmal `read_me` mit `modules: ["interactive"]`
+laden, falls in dieser Sitzung noch nicht geschehen. Das Widget enthält **nur** das Formular;
+die zwei Sätze Erklärung (Zeitraum, Quellen, was fehlt) stehen im Chattext davor.
 
-## Aufbau
+Warum ein eigenes Formular und nicht die Elicitation-Vorlage: Albert will beim Eintragen
+sofort sehen, wie viel Zeit für den Tag schon zusammenkommt. Das verlangt eine Summe, die bei
+jeder Eingabe neu rechnet – also eigenes JavaScript.
+
+## Was das Formular zeigt
+
+- Je Tag ein Abschnitt mit Tabelle: Ticket (Key + Kurztitel), Beleg (Uhrzeiten, Quelle,
+  Rückfrage), Minuten-Eingabefeld.
+- Vorschlag = vorausgefüllter Wert, immer auf volle Viertelstunden aufgerundet (das Skript
+  liefert ihn so). Die Felder zählen in 15-min-Schritten (`step="15"`); andere Werte lassen sich
+  trotzdem tippen und werden so gebucht. Hängt eine Rückfrage am Ticket, bleibt das Feld **leer**
+  und der Platzhalter zeigt den gekappten Vorschlag („max. 120“). Keine Spur = leer.
+- Termine und Blöcke ohne Ticket bekommen ein Ticket-Feld; leer heißt „nicht buchen“.
+- Unter jeder Tagestabelle: **Summe** aller Zeilen mit Ticket (live), daneben der Abstand zur
+  Sollzeit („bis 8 h fehlen 2 h 20 min“) und die nicht gebuchte Zeit (Termine ohne Ticket).
+- „+ Zeile“ fügt eine freie Zeile (Ticket oder Thema + Minuten) hinzu.
+- „Buchen“ schickt alles in einer Nachricht an Claude, „Abbrechen“ bricht ab.
+
+Sollzeit: `data-soll` in Minuten am Wurzelelement, Standard 480. Liefert eine Quelle die
+tatsächliche Arbeitszeit des Tages (z. B. TimeTac), diesen Wert eintragen und im Chattext sagen.
+
+## Vorlage
+
+Platzhalter in Großbuchstaben ersetzen; je Tag einen `section.md-day`, je Ticket eine Zeile.
+Keine Ticket-Inhalte in die Zeilen, nur Key, Kurztitel, Uhrzeiten, Quelle, Rückfrage.
 
 ```html
-<form class="elicit">
-  <div class="elicit-header">
-    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M11.586 2a1.5 1.5 0 0 1 1.06.44l2.914 2.914a1.5 1.5 0 0 1 .44 1.06V16.5a1.5 1.5 0 0 1-1.5 1.5h-9a1.5 1.5 0 0 1-1.492-1.347L4 16.5v-13A1.5 1.5 0 0 1 5.5 2zM5.5 3a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7h-2.5A1.5 1.5 0 0 1 11 5.5V3zm7.04 10.304a.5.5 0 0 1 .92.392c-.295.69-.871 1.304-1.66 1.304-.487 0-.892-.234-1.2-.574-.309.34-.713.574-1.2.574-.486 0-.892-.233-1.2-.574-.31.34-.714.574-1.2.574a.5.5 0 0 1 0-1c.212 0 .52-.18.74-.696l.034-.067a.5.5 0 0 1 .886.067c.221.516.528.696.74.696.213 0 .52-.18.74-.696l.035-.067a.5.5 0 0 1 .885.067c.22.516.527.696.74.696s.519-.18.74-.696m0-4a.5.5 0 0 1 .92.392c-.295.69-.871 1.304-1.66 1.304-.487 0-.892-.234-1.2-.574-.309.34-.713.574-1.2.574-.486 0-.892-.233-1.2-.574-.31.34-.714.574-1.2.574a.5.5 0 0 1 0-1c.212 0 .52-.18.74-.696l.034-.067a.5.5 0 0 1 .886.067c.221.516.528.696.74.696.213 0 .52-.18.74-.696l.035-.067a.5.5 0 0 1 .885.067c.22.516.527.696.74.696s.519-.18.74-.696M12 5.5a.5.5 0 0 0 .5.5h2.293L12 3.207z"/></svg>
-    <span>MicDrop-Details</span>
+<h2 class="sr-only">MicDrop-Formular: Minuten je Ticket eintragen, die Tagessumme rechnet sofort mit</h2>
+<div id="micdrop" data-soll="480">
+
+  <section class="md-day" data-day="2026-11-16">
+    <h3>Montag, 16.11.2026</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed;">
+      <colgroup><col style="width:34%"><col><col style="width:120px"></colgroup>
+      <thead>
+        <tr style="color:var(--text-secondary); font-size:12px;">
+          <th style="text-align:left; padding:6px 4px; border-bottom:0.5px solid var(--border);">Ticket</th>
+          <th style="text-align:left; padding:6px 4px; border-bottom:0.5px solid var(--border);">Beleg</th>
+          <th style="text-align:right; padding:6px 4px; border-bottom:0.5px solid var(--border);">Minuten</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Ticket mit Vorschlag: value vorbelegt -->
+        <tr data-key="TECH-557">
+          <td style="padding:8px 4px; vertical-align:top;"><span style="font-weight:500">TECH-557</span><br><span style="color:var(--text-secondary); font-size:13px;">Keine Info Mail an Kunden über Neues Ticket</span></td>
+          <td style="padding:8px 4px; vertical-align:top; color:var(--text-secondary); font-size:13px;">Kommentar 08:25 und 12:16 · Vorschlag 60</td>
+          <td style="padding:8px 4px; text-align:right;"><input type="number" class="md-min" min="0" step="15" value="60" style="width:90px; text-align:right;" aria-label="Minuten TECH-557"></td>
+        </tr>
+        <!-- Ticket mit Rückfrage: value leer, Rückfrage als Satz, Platzhalter zeigt die Kappung -->
+        <tr data-key="TECH-457">
+          <td style="padding:8px 4px; vertical-align:top;"><span style="font-weight:500">TECH-457</span><br><span style="color:var(--text-secondary); font-size:13px;">Automatischer Mindestwert von 0,1 € an Landmark</span></td>
+          <td style="padding:8px 4px; vertical-align:top; color:var(--text-secondary); font-size:13px;">Kommentar 11:00 · davor 155 min ohne andere Spur. <span style="color:var(--text-warning)">War das alles TECH-457?</span></td>
+          <td style="padding:8px 4px; text-align:right;"><input type="number" class="md-min" min="0" step="15" placeholder="max. 120" style="width:90px; text-align:right;" aria-label="Minuten TECH-457"></td>
+        </tr>
+        <!-- Termin: Ticket-Feld, leer = nicht buchen -->
+        <tr data-key="Termin Tech Daily 09:30–10:30" data-kind="termin">
+          <td style="padding:8px 4px; vertical-align:top;"><input type="text" class="md-ticket" placeholder="Ticket oder leer" style="width:95%;" aria-label="Ticket für Tech Daily"><br><span style="color:var(--text-secondary); font-size:13px;">Tech Daily 09:30–10:30</span></td>
+          <td style="padding:8px 4px; vertical-align:top; color:var(--text-secondary); font-size:13px;">Kalender · leer = nicht buchen</td>
+          <td style="padding:8px 4px; text-align:right;"><input type="number" class="md-min" min="0" step="15" value="60" style="width:90px; text-align:right;" aria-label="Minuten Tech Daily"></td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" style="padding:10px 4px; border-top:0.5px solid var(--border);"><button type="button" class="md-add">+ Zeile</button></td>
+          <td style="padding:10px 4px; border-top:0.5px solid var(--border); text-align:right; white-space:nowrap;">
+            <span class="md-sum" style="font-size:16px; font-weight:500;"></span><br>
+            <span class="md-rest" style="color:var(--text-muted); font-size:12px;"></span><br>
+            <span class="md-unbooked" style="color:var(--text-muted); font-size:12px;"></span>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+
+  <!-- weitere Tage als weitere section.md-day -->
+
+  <div style="display:flex; gap:12px; justify-content:flex-end; align-items:center; margin-top:1rem;">
+    <span id="md-total" style="color:var(--text-secondary); font-size:13px; margin-right:auto;"></span>
+    <button type="button" id="md-cancel">Abbrechen</button>
+    <button type="button" id="md-submit">Buchen ↗</button>
   </div>
-  <div class="elicit-body">
-
-    <!-- Ticket MIT Vorschlag: Vorschlag vorausgewählt -->
-    <div class="elicit-group">
-      <label class="elicit-question">TECH-557 · Keine Info Mail an Kunden über Neues Ticket — 16.11.: Kommentar 08:25 und 12:16, Claude-Code 2 min. Vorschlag 60 min. Wie viele Minuten?</label>
-      <div class="elicit-pills" data-name="TECH-557" data-multi="false">
-        <button type="button" class="elicit-pill" data-value="60" aria-pressed="true">60 (Vorschlag)</button>
-        <button type="button" class="elicit-pill" data-value="15">15</button>
-        <button type="button" class="elicit-pill" data-value="30">30</button>
-        <button type="button" class="elicit-pill" data-value="90">90</button>
-        <button type="button" class="elicit-pill" data-value="120">120</button>
-        <button type="button" class="elicit-pill" data-value="0">nicht buchen</button>
-        <button type="button" class="elicit-pill" data-value="Andere" data-other>Andere</button>
-      </div>
-      <input type="text" class="elicit-other" data-for="TECH-557" placeholder="Minuten" hidden>
-    </div>
-
-    <!-- Ticket mit Rückfrage: die Frage steht im Label, der gekappte Vorschlag ist NICHT vorausgewählt -->
-    <div class="elicit-group">
-      <label class="elicit-question">TECH-457 · Automatischer Mindestwert … — 16.11. 11:00 Kommentar; davor 155 min ohne andere Spur. War das alles TECH-457? Vorschlag höchstens 120 min.</label>
-      <div class="elicit-pills" data-name="TECH-457" data-multi="false">
-        <button type="button" class="elicit-pill" data-value="120">120 (Vorschlag, gekappt)</button>
-        <button type="button" class="elicit-pill" data-value="155">155 (ganze Lücke)</button>
-        <button type="button" class="elicit-pill" data-value="30">30</button>
-        <button type="button" class="elicit-pill" data-value="60">60</button>
-        <button type="button" class="elicit-pill" data-value="0">nicht buchen</button>
-        <button type="button" class="elicit-pill" data-value="Andere" data-other>Andere</button>
-      </div>
-      <input type="text" class="elicit-other" data-for="TECH-457" placeholder="Minuten" hidden>
-    </div>
-
-    <!-- Ticket OHNE Zeitangabe: nichts vorausgewählt = Eingabefeld -->
-    <div class="elicit-group">
-      <label class="elicit-question">TECH-648 · API-Key für den KD 40636 — 13.11. 15:40 Kommentar, sonst keine Spur. Wie viele Minuten?</label>
-      <div class="elicit-pills" data-name="TECH-648" data-multi="false">
-        <button type="button" class="elicit-pill" data-value="15">15</button>
-        <button type="button" class="elicit-pill" data-value="30">30</button>
-        <button type="button" class="elicit-pill" data-value="60">60</button>
-        <button type="button" class="elicit-pill" data-value="0">nicht buchen</button>
-        <button type="button" class="elicit-pill" data-value="Andere" data-other>Andere</button>
-      </div>
-      <input type="text" class="elicit-other" data-for="TECH-648" placeholder="Minuten" hidden>
-    </div>
-
-    <!-- Sammel-Pflege: eine Gruppe für alle -->
-    <div class="elicit-group">
-      <label class="elicit-question">Sammel-Pflege 16.11. 10:11–10:20: 18 Tickets (TECH-657 … TECH-674) auf „Warten auf Zeitslot“ gesetzt. Zusammen buchen?</label>
-      <div class="elicit-pills" data-name="Sammelpflege_16_11" data-multi="false">
-        <button type="button" class="elicit-pill" data-value="nicht buchen" aria-pressed="true">nicht buchen</button>
-        <button type="button" class="elicit-pill" data-value="15 auf TECH-657">15 min auf TECH-657</button>
-        <button type="button" class="elicit-pill" data-value="Andere" data-other>Andere</button>
-      </div>
-      <input type="text" class="elicit-other" data-for="Sammelpflege_16_11" placeholder="Minuten und Ticket" hidden>
-    </div>
-
-    <!-- Termin -->
-    <div class="elicit-group">
-      <label class="elicit-question">Tech Daily 16.11. 09:30–10:30 (60 min) — auf welches Ticket?</label>
-      <div class="elicit-pills" data-name="Termin_Tech_Daily_16_11" data-multi="false">
-        <button type="button" class="elicit-pill" data-value="nicht buchen" aria-pressed="true">nicht buchen</button>
-        <button type="button" class="elicit-pill" data-value="TECH-123">TECH-123 Daily</button>
-        <button type="button" class="elicit-pill" data-value="Andere" data-other>Andere</button>
-      </div>
-      <input type="text" class="elicit-other" data-for="Termin_Tech_Daily_16_11" placeholder="Ticket-Key" hidden>
-    </div>
-
-    <!-- Tagesfrage (nur wenn das Skript sie setzt) -->
-    <div class="elicit-group">
-      <label class="elicit-question">13.11. hat nur 20 min Spuren. Gab es etwas ohne Ticket – Support, Abstimmungen, Recherche in ChatGPT oder claude.ai? (Thema und Minuten)</label>
-      <textarea class="elicit-textarea" data-name="Ergaenzung_13_11" placeholder="z. B. Recherche Heidler-Schnittstelle 90 min, TECH-424"></textarea>
-    </div>
-
-    <div class="elicit-group">
-      <label class="elicit-question">Fehlt noch etwas?</label>
-      <textarea class="elicit-textarea" data-name="Ergaenzung" placeholder="Ticket oder Thema + Minuten"></textarea>
-    </div>
-
-  </div>
-  <div class="elicit-footer">
-    <button type="button" class="elicit-skip">Abbrechen</button>
-    <button type="button" class="elicit-submit">Buchen</button>
-  </div>
-</form>
+  <p id="md-error" style="color:var(--text-danger); font-size:13px; display:none; margin:8px 0 0;"></p>
+</div>
+<script>
+(function () {
+  var root = document.getElementById('micdrop');
+  var soll = Number(root.dataset.soll) || 480;
+  function fmt(m) { m = Math.round(m); return m >= 60 ? Math.floor(m / 60) + ' h ' + ('0' + (m % 60)).slice(-2) + ' min' : m + ' min'; }
+  function rowKey(tr) { var t = tr.querySelector('.md-ticket'); return t ? t.value.trim() : (tr.dataset.key || ''); }
+  function rowMin(tr) { var i = tr.querySelector('.md-min'); var v = i ? Number(i.value) : 0; return v > 0 ? v : 0; }
+  function recalc() {
+    var total = 0;
+    root.querySelectorAll('.md-day').forEach(function (day) {
+      var booked = 0, unbooked = 0;
+      day.querySelectorAll('tbody tr').forEach(function (tr) {
+        var m = rowMin(tr);
+        if (rowKey(tr)) booked += m; else unbooked += m;
+      });
+      total += booked;
+      day.querySelector('.md-sum').textContent = 'Summe ' + fmt(booked);
+      var rest = day.querySelector('.md-rest');
+      rest.textContent = booked < soll ? 'bis ' + fmt(soll) + ' fehlen ' + fmt(soll - booked)
+                       : booked > soll ? fmt(booked - soll) + ' über ' + fmt(soll) : 'entspricht ' + fmt(soll);
+      day.querySelector('.md-unbooked').textContent = unbooked ? 'nicht gebucht: ' + fmt(unbooked) : '';
+    });
+    var days = root.querySelectorAll('.md-day').length;
+    document.getElementById('md-total').textContent = days > 1 ? 'Gesamt ' + fmt(total) : '';
+  }
+  root.addEventListener('input', function (e) {
+    if (e.target.classList.contains('md-min') || e.target.classList.contains('md-ticket')) e.target.style.borderColor = '';
+    recalc();
+  });
+  root.querySelectorAll('.md-add').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var tbody = b.closest('table').querySelector('tbody');
+      var tr = document.createElement('tr');
+      tr.dataset.kind = 'frei';
+      tr.innerHTML = '<td style="padding:8px 4px;"><input type="text" class="md-ticket" placeholder="Ticket-Key oder Thema" style="width:95%;" aria-label="Ticket oder Thema"></td>'
+        + '<td style="padding:8px 4px; color:var(--text-secondary); font-size:13px;">ohne Spur</td>'
+        + '<td style="padding:8px 4px; text-align:right;"><input type="number" class="md-min" min="0" step="15" placeholder="Minuten" style="width:90px; text-align:right;" aria-label="Minuten"></td>';
+      tbody.appendChild(tr);
+      tr.querySelector('.md-ticket').focus();
+    });
+  });
+  document.getElementById('md-cancel').addEventListener('click', function () { sendPrompt('MicDrop abbrechen, nichts buchen.'); });
+  document.getElementById('md-submit').addEventListener('click', function () {
+    var err = document.getElementById('md-error'), bad = false, parts = [];
+    root.querySelectorAll('.md-day').forEach(function (day) {
+      var items = [];
+      day.querySelectorAll('tbody tr').forEach(function (tr) {
+        var inp = tr.querySelector('.md-min'), v = inp ? inp.value.trim() : '';
+        var tick = tr.querySelector('.md-ticket'), key = rowKey(tr);
+        if (v !== '' && !/^\d+$/.test(v)) { bad = true; inp.style.borderColor = 'var(--border-danger)'; return; }
+        if (tr.dataset.kind === 'frei' && v && !key) { bad = true; tick.style.borderColor = 'var(--border-danger)'; return; }
+        if (tr.dataset.kind === 'termin' && !key) { items.push(tr.dataset.key + ': nicht buchen'); return; }
+        if (!key) return;
+        if (tr.dataset.kind === 'termin') { items.push(tr.dataset.key + ' auf ' + key + ': ' + (v || '0')); return; }
+        items.push(key + ': ' + (v === '' ? 'offen' : v));
+      });
+      parts.push(day.dataset.day + ' → ' + items.join(', ') + ' | ' + day.querySelector('.md-sum').textContent);
+    });
+    if (bad) { err.textContent = 'Nur ganze Minuten eintragen; freie Zeilen brauchen ein Ticket oder Thema.'; err.style.display = 'block'; return; }
+    err.style.display = 'none';
+    sendPrompt('MicDrop buchen: ' + parts.join(' || '));
+  });
+  recalc();
+})();
+</script>
 ```
 
 Regeln für das Befüllen:
 
-- `data-name` = Ticket-Key (Bindestrich bleibt); für Termine, Sammel-Pflege und Tagesfragen ein
-  sprechender Name mit Unterstrichen.
-- Pillenwerte sind nackte Minuten (`"60"`), damit die Antwort eindeutig ist. Vorschlag immer als
-  erste Pille; nur vorausgewählt (`aria-pressed="true"`), wenn keine Rückfrage am Ticket hängt.
-- Mehrtägig und Ticket an mehreren Tagen: je Tag eine Gruppe, `data-name="TECH-557_16_11"`.
-- Höchstens 20 Ticket-Gruppen. Mehr: die kleinsten (unter 10 min Vorschlag) als eine Textzeile
-  im Chat vorab zusammenfassen und nur bei Widerspruch einzeln anbieten.
-- Keine Ticket-Inhalte in die Labels, nur Key, Titel, Uhrzeiten, Quelle.
+- `data-day` im ISO-Format, Überschrift als Wochentag und Datum.
+- `data-key` = Ticket-Key; für Termine und Blöcke ohne Ticket ein sprechender Text
+  (`Termin Tech Daily 09:30–10:30`, `Claude-Code 15:27–15:32 ohne Ticket`) mit `data-kind="termin"`.
+- Vorschlag nur als `value`, wenn keine Rückfrage am Ticket hängt; sonst `placeholder="max. N"`.
+- Mehrtägig: je Tag ein Abschnitt; ein Ticket mit Spuren an mehreren Tagen steht in jedem Tag.
+- Höchstens 20 Zeilen je Tag; mehr: die kleinsten (unter 10 min) vorab im Chat zusammenfassen.
+- Script-Block unverändert übernehmen; nur die Tabellen ändern sich.
 
 ## Antwort lesen
 
-Die Antwort kommt als eine Zeile:
+„Buchen“ schickt eine Nachricht in dieser Form:
 
 ```text
-MicDrop-Details — TECH-557: 60 · TECH-457: Andere (45) · TECH-648: 15 · Sammelpflege 16 11: nicht buchen · Termin Tech Daily 16 11: TECH-123 · Ergaenzung: TECH-424 Recherche 90
+MicDrop buchen: 2026-11-16 → TECH-557: 60, TECH-457: offen, Termin Tech Daily 09:30–10:30 auf TECH-123: 60, Recherche Heidler: 90 | Summe 3 h 30 min || 2026-11-15 → TECH-675: 20 | Summe 20 min
 ```
 
-- Zahl → Minuten; `0` oder „nicht buchen“ → auslassen.
-- „Andere (…)“ → Zahl aus der Klammer; steht dort ein Ticket-Key (bei Terminen) → auf dieses Ticket.
-- Freitext: Key + Minuten herauslesen; ohne Key → Ticket suchen/anlegen (team-and-routing.md).
-- `(Skipped the form …)` → nichts buchen, Vorschlagsliste als Text ausgeben und auf Antwort warten.
+- `KEY: Zahl` → Minuten buchen; `0` → auslassen.
+- `KEY: offen` → nicht buchen, in der Abschlussausgabe als „offen gelassen“ nennen.
+- `Termin … auf KEY: Zahl` → auf dieses Ticket; `Termin …: nicht buchen` → auslassen.
+- Zeile ohne Ticket-Key (freier Text) → Ticket suchen oder nach team-and-routing.md anlegen.
+- `MicDrop abbrechen` → nichts buchen, Vorschlagsliste als Text ausgeben.
+
+Die Summe in der Nachricht ist Alberts Entscheidungsgrundlage gewesen; sie wird nicht
+nachgerechnet, sondern die Einzelwerte werden gebucht.
 
 ## Ohne Formular-Werkzeug
 
-Dieselben Gruppen als Text, eine Zeile je Ticket:
+Dieselben Zeilen als Text, Vorschlag in Klammern, dazu die Sollzeit. Albert antwortet in einer
+Nachricht; danach die Tagessummen ausrechnen und vor dem Buchen nennen, damit er noch
+ergänzen kann:
 
 ```text
-MicDrop 13.–16.11. — bitte Minuten eintragen (Vorschlag in Klammern, leer = keine Spur):
-TECH-557  Keine Info Mail an Kunden … (60, Kommentar 08:25 + 12:16)      → ___
-TECH-457  Automatischer Mindestwert … (max 120, 155 min Lücke – alles TECH-457?) → ___
-TECH-648  API-Key für den KD 40636 (–, Kommentar 13.11. 15:40)            → ___
-Tech Daily 16.11. 60 min → Ticket oder „nicht buchen“
+MicDrop 16.11. — bitte Minuten eintragen (Vorschlag in Klammern, Soll 8 h):
+TECH-557  Keine Info Mail an Kunden … (60, Kommentar 08:25 + 12:16)                 → ___
+TECH-457  Automatischer Mindestwert … (max 120, 155 min Lücke – alles TECH-457?)     → ___
+Tech Daily 09:30–10:30 (60) → Ticket oder „nicht buchen“
 Fehlt etwas? Ticket/Thema + Minuten
 ```
-
-Albert antwortet in einer Nachricht; Zeilen ohne Eintrag werden nicht gebucht.

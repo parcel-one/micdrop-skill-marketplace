@@ -12,7 +12,7 @@
       "name": "daily-micdrop",
       "source": "./plugins/daily-micdrop",
       "description": "Feierabend-Buchung: Zeitspanne eingeben, Spuren aus Jira, Claude-Code-Sitzungen, Kalender, Teams und Mail sammeln, Minuten je Ticket schätzen, Formular mit Eingabefeldern, Worklogs in Jira buchen.",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "author": {
         "name": "Albert Wagner"
       },

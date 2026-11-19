@@ -89,7 +89,8 @@ Das Skript rechnet „vom Öffnen bis zur Eingabe“:
   als unbekannter Tagesbeginn markiert.
 - Claude-Code-Blöcke (Nachrichten mit ≤ 15 min Abstand) zählen als aktive Zeit direkt auf ihr Ticket.
 - Termine, Teams- und Mail-Spuren zählen auf kein Ticket, unterbrechen aber die Zeitachse.
-- Ergebnis je Ticket: Minuten (auf 5 gerundet), Minuten je Tag, Beginn/Ende, Belege, Rückfragen.
+- Ergebnis je Ticket: Minuten (auf volle Viertelstunden **aufgerundet**), Minuten je Tag,
+  Beginn/Ende, Belege, Rückfragen. Alle Vorschläge und Eingabefelder laufen in 15-min-Schritten.
 - Tickets, die nur aus Claude-Code-Sitzungen stammen, haben im Ergebnis keinen Titel; den Titel aus
   der Jira-A-Liste nehmen oder kurz per `getJiraIssue` (fields `summary`) holen.
 - Pfade in Git-Bash-Schreibweise (`/c/Users/…`) setzt das Skript selbst nach Windows um.
@@ -100,7 +101,7 @@ Rückfragen, die das Skript setzt und die **immer** ins Formular gehören:
 |---|---|
 | > 120 min ohne andere Spur vor einer Eingabe | „11:00 Kommentar TECH-457: 155 min ohne andere Spur davor – war das alles TECH-457?“ (Vorschlag gekappt auf 120) |
 | > 180 min an einem Tag für ein Ticket | „plausibel?“ |
-| ≥ 4 Tickets innerhalb von 10 min | Sammel-Pflege: je 2 min vorgeschlagen, einmal fragen, ob das als „Jira-Pflege“ gebucht werden soll |
+| ≥ 4 Tickets innerhalb von 10 min | Sammel-Pflege: kein Vorschlag je Ticket; einmal fragen, ob das zusammen als eine Position (z. B. 15 min „Jira-Pflege“ auf eines der Tickets) gebucht werden soll |
 | Werktag mit < 3 h Spuren | einmal fragen, was ohne Ticket Zeit gekostet hat (Support, Abstimmungen, Recherche in ChatGPT/claude.ai) |
 | Tagessumme > 10 h | „stimmt die Summe?“ |
 | Worklog am selben Tag schon vorhanden | nicht erneut vorschlagen, im Formular als „bereits gebucht“ zeigen |
@@ -110,19 +111,23 @@ Rückfragen, die das Skript setzt und die **immer** ins Formular gehören:
 
 Vorlage und Antwortformat in [references/formular.md](references/formular.md). Regeln:
 
-- Ein Formular für den ganzen Zeitraum, Tickets nach Vorschlag absteigend, darunter Termine und
-  Blöcke ohne Ticket, zuletzt ein Freitextfeld „Fehlt etwas?“.
-- Jedes Ticket bekommt Pillen mit Minuten. Gibt es einen Vorschlag, ist er vorausgewählt und als
-  Vorschlag beschriftet; die Belegzeile (Uhrzeiten, Quelle) steht in der Frage. Gibt es keinen,
-  ist nichts vorausgewählt – das ist das Eingabefeld, das Albert füllt. „Andere“ öffnet immer ein
-  Freitextfeld für Minuten.
-- Rückfragen aus Schritt 2 stehen als Satz in der Frage des Tickets, nicht in einer Extra-Runde.
-- Termine: Pillen mit einem passenden offenen Ticket (Suche nach „Daily“, „Meeting“,
-  „Abstimmung“ in TECH, Albert zugewiesen), „nicht buchen“ und „Andere“.
-- Mehrtägig: Minuten je Ticket und Tag, wenn das Skript `nach_tag` mit mehreren Tagen liefert;
-  sonst ein Feld.
-- Ohne Formular-Werkzeug (`show_widget` nicht vorhanden): dieselbe Liste als Text, jede Zeile
-  `KEY – Titel – Vorschlag X min (Beleg) → ___ min`, Albert antwortet in einer Nachricht.
+- Ein Formular für den ganzen Zeitraum, je Tag eine Tabelle: Tickets nach Vorschlag absteigend,
+  darunter Termine und Blöcke ohne Ticket, dazu „+ Zeile“ für Fehlendes.
+- Jedes Ticket hat ein Minuten-Eingabefeld. Gibt es einen Vorschlag ohne Rückfrage, ist er
+  vorausgefüllt; die Belegzeile (Uhrzeiten, Quelle) steht daneben. Hängt eine Rückfrage am Ticket
+  oder gibt es keine Spur, bleibt das Feld leer – das ist das Eingabefeld, das Albert füllt.
+- **Die Tagessumme rechnet bei jeder Eingabe sofort mit** und steht unter der Tabelle, daneben der
+  Abstand zur Sollzeit (Standard 8 h, `data-soll`) und die nicht gebuchte Zeit. Daran entscheidet
+  Albert, ob der Tag vollständig erfasst ist – deshalb nie ein Formular ohne diese Summe.
+- Rückfragen aus Schritt 2 stehen als Satz in der Belegspalte des Tickets, nicht in einer
+  Extra-Runde.
+- Termine: Ticket-Feld, leer heißt „nicht buchen“; passende offene Tickets (Suche nach „Daily“,
+  „Meeting“, „Abstimmung“ in TECH, Albert zugewiesen) im Chattext vorschlagen.
+- Mehrtägig: je Tag ein Abschnitt mit eigener Summe und Gesamtsumme unten.
+- „Buchen“ schickt alles in einer Nachricht (`MicDrop buchen: …`, Format in formular.md).
+- Ohne Formular-Werkzeug (`show_widget` nicht vorhanden): dieselbe Liste als Text mit Sollzeit,
+  jede Zeile `KEY – Titel – Vorschlag X min (Beleg) → ___ min`; nach Alberts Antwort die
+  Tagessummen nennen und erst dann buchen.
 
 Wenn Albert im Aufruf bereits Dauern nennt („TECH-636 15 min …“), gilt der alte Weg: diese Angaben
 direkt übernehmen, Formular nur für die Tickets mit Spuren, aber ohne genannte Dauer.
@@ -137,7 +142,8 @@ Nach der Antwort ohne weitere Bestätigung ausführen (Toolnamen in datenquellen
    Zwei Positionen auf dasselbe Ticket am selben Tag (z. B. umgeleitete Analyse plus eigener
    Kommentar) zu einem Worklog zusammenfassen. Worklog-Kommentar: eine kurze Belegzeile („Kommentar 08:25 und 12:16, Claude-Code
    17 min“), keine Inhalte aus den Tickets wiederholen.
-2. Minuten 0 oder „nicht buchen“: auslassen, in der Abschlussausgabe nennen.
+2. Minuten 0, „nicht buchen“ oder „offen“ (Feld leer gelassen): auslassen, in der
+   Abschlussausgabe als nicht gebucht bzw. offen gelassen nennen.
 3. Doppelbuchung: liegt am selben Tag schon ein Worklog von Albert auf dem Ticket, nicht buchen,
    sondern ausweisen.
 4. Freitext „Fehlt etwas?“ mit Thema ohne Ticket: Ticket suchen oder nach

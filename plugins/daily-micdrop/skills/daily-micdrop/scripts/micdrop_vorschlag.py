@@ -40,7 +40,7 @@ MIN_DAY_WEEKDAY = 180
 BURST_N, BURST_WIN = 4, 10
 DAY_START = 7
 FIRST_OF_DAY_MAX = 60
-ROUND_TO = 5
+ROUND_TO = 15  # Vorschlaege auf volle Viertelstunden aufrunden
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
 try:
@@ -259,8 +259,8 @@ class Collector:
                     prev = b
             pt = per_ticket[key]
             if id(p) in burst_ids:
-                mins = 2
-                pt["flags"].add("Sammel-Pflege: mehrere Tickets innerhalb weniger Minuten - je 2 min angesetzt")
+                mins = 0
+                pt["flags"].add("Sammel-Pflege: mehrere Tickets innerhalb weniger Minuten - nicht gerechnet; zusammen als eine Position buchen oder auslassen")
                 note = "Sammel-Pflege"
             elif prev is None:
                 gap = (t - day_start).total_seconds() / 60

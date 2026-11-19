@@ -4,7 +4,7 @@ Claude-Code-Plugin-Marketplace von PARCEL.ONE Technology. Enthält derzeit ein P
 
 | Plugin | Version | Zweck |
 |---|---|---|
-| `daily-micdrop` | 2.0.0 | Feierabend-Buchung: Zeitspanne nennen, der Skill sammelt die Arbeitsspuren selbst, schätzt Minuten je Ticket und bucht Worklogs in Jira |
+| `daily-micdrop` | 2.1.0 | Feierabend-Buchung: Zeitspanne nennen, der Skill sammelt die Arbeitsspuren selbst, schätzt Minuten je Ticket, zeigt ein Formular mit laufender Tagessumme und bucht Worklogs in Jira |
 
 ## Installation in Claude Code
 
